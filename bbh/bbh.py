@@ -103,12 +103,14 @@ class BBHFast(BBH):
                  n_neighbors=4):
         super().__init__(bboxes=bboxes, dist_metric=dist_metric)
         self.n_neighbors = n_neighbors
+        self.n_bboxes = len(bboxes)  # No. of bboxes initially. Save this because later this will change.
+        self.idx2bbox_tuple = {}  # map idx(int) to bbox tuple (morton_code, bbox, index)
 
     def merge(self):
         self._morton_order()
 
         hierarchy = []
-        invalid_pairs = {}
+        is_merged = {}
         cur_idx = len(self.bboxes)  # Index for new merged bbox
         pq = PriorityQueue()  # Use priority queue for quick candidate selection
         for i in range(len(self.data)):
@@ -117,24 +119,38 @@ class BBHFast(BBH):
                     dist = self.dist_metric(self.data[i][1], self.data[j][1])
                     pq.put((dist, self.data[i], self.data[j]))
 
-        hierarchy.append(self.data.copy())
-        for i in range(1, len(self.bboxes)):
+        hierarchy.append(self.data.copy())  # original bboxes
+        for i in range(0, self.n_bboxes-1):
             while True:
                 p = pq.get()
-                s_id, t_id = p[1][2], p[2][2]  # get the index of the bbox pair
-                if (s_id, t_id) not in invalid_pairs:
+                s_idx, t_idx = p[1][2], p[2][2]  # get the index of the bbox pair
+                if s_idx not in is_merged and t_idx not in is_merged:
                     break
-            cur_hierarchy = [d for d in hierarchy[i-1] if d[2] != s_id and d[2] != t_id]  # del the two to be merged
+            # Merge the selected two bboxes to get a new one
             bbox_merged = self._merge2(p[1][1], p[2][1])  # merge two bbox
-            new_center_x, new_center_y = int((bbox_merged[0]+bbox_merged[2])/2), int((bbox_merged[1]+bbox_merged[3])/2)
+            new_center_x, new_center_y = int((bbox_merged[0] + bbox_merged[2]) / 2), int(
+                (bbox_merged[1] + bbox_merged[3]) / 2)
             z_merged = pm.interleave2(new_center_x, new_center_y)
             d_merged = (z_merged, bbox_merged, cur_idx)
-            cur_idx += 1
-            cur_hierarchy.append(d_merged)
-            # Mark the neighbors of the two deleted box
+            cur_idx += 1  # index for next bbox
 
+            # Mark the selected two boxes as merged
+            is_merged.add(s_idx)
+            is_merged.add(t_idx)
 
-
+            # Remove the merged bboxes from the current sorted list
+            cur_data = hierarchy[i].copy()  # Copy from previous level first. This is not necessary so does not count
+            cur_data.remove(self.idx2bbox_tuple(s_idx))
+            cur_data.remove(self.idx2bbox_tuple(t_idx))
+            # Add the merged bbox to the sorted list
+            cur_data.add(d_merged)  # BST insert, O(logN)
+            # Search neighbors and calculate the distance
+            m_idx = cur_data.index(d_merged)  # Get the index of the added element in the sorted list. Log(N)
+            for j in range(m_idx-self.n_neighbors, m_idx+self.n_neighbors+1):
+                if 0 <= j < len(cur_data):
+                    dist = self.dist_metric(cur_data[m_idx], cur_data[j])
+                    pq.put((dist, cur_data[m_idx], cur_data[j]))
+        return hierarchy
 
     def _morton_order(self):
         """
@@ -144,8 +160,10 @@ class BBHFast(BBH):
         self.z_orders = [pm.interleave2(x, y) for x, y in self.bbox_centers]
         # Use SortedList for Fast Insertion and Deletion
 
-        self.data = SortedList([(z_order, bbox, idx) for idx, bbox, z_order in enumerate(zip(self.bboxes, self.z_orders))])
-    #    self.data.sort(key=lambda elem: elem[0])  # sort by morton code
+        self.data = SortedList()
+        for idx, bbox, z_order in enumerate(zip(self.bboxes, self.z_orders)):
+            self.data.add((z_order, bbox, idx))
+            self.idx2bbox_tuple[idx] = (z_order, bbox, idx)
 
     def _radix_sort(self):
         pass
