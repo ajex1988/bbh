@@ -110,7 +110,7 @@ class BBHFast(BBH):
         self._morton_order()
 
         hierarchy = []
-        is_merged = {}
+        is_merged = set()
         cur_idx = len(self.bboxes)  # Index for new merged bbox
         pq = PriorityQueue()  # Use priority queue for quick candidate selection
         for i in range(len(self.data)):
@@ -132,6 +132,7 @@ class BBHFast(BBH):
                 (bbox_merged[1] + bbox_merged[3]) / 2)
             z_merged = pm.interleave2(new_center_x, new_center_y)
             d_merged = (z_merged, bbox_merged, cur_idx)
+            self.idx2bbox_tuple[cur_idx] = d_merged
             cur_idx += 1  # index for next bbox
 
             # Mark the selected two boxes as merged
@@ -140,17 +141,26 @@ class BBHFast(BBH):
 
             # Remove the merged bboxes from the current sorted list
             cur_data = hierarchy[i].copy()  # Copy from previous level first. This is not necessary so does not count
-            cur_data.remove(self.idx2bbox_tuple(s_idx))
-            cur_data.remove(self.idx2bbox_tuple(t_idx))
+            cur_data.remove(self.idx2bbox_tuple[s_idx])
+            cur_data.remove(self.idx2bbox_tuple[t_idx])
             # Add the merged bbox to the sorted list
             cur_data.add(d_merged)  # BST insert, O(logN)
             # Search neighbors and calculate the distance
             m_idx = cur_data.index(d_merged)  # Get the index of the added element in the sorted list. Log(N)
             for j in range(m_idx-self.n_neighbors, m_idx+self.n_neighbors+1):
-                if 0 <= j < len(cur_data):
-                    dist = self.dist_metric(cur_data[m_idx], cur_data[j])
+                if 0 <= j < len(cur_data) and j != m_idx:
+                    dist = self.dist_metric(cur_data[m_idx][1], cur_data[j][1])
                     pq.put((dist, cur_data[m_idx], cur_data[j]))
-        return hierarchy
+
+            hierarchy.append(cur_data)
+        # Post-processing. Convert OrderedList to List
+        hl = []
+        for h in hierarchy:
+            l = []
+            for t in h:
+                l.append(t[1])
+            hl.append(l)
+        return hl
 
     def _morton_order(self):
         """
@@ -161,7 +171,7 @@ class BBHFast(BBH):
         # Use SortedList for Fast Insertion and Deletion
 
         self.data = SortedList()
-        for idx, bbox, z_order in enumerate(zip(self.bboxes, self.z_orders)):
+        for idx, (bbox, z_order) in enumerate(zip(self.bboxes, self.z_orders)):
             self.data.add((z_order, bbox, idx))
             self.idx2bbox_tuple[idx] = (z_order, bbox, idx)
 
@@ -208,8 +218,30 @@ def bbh_naive_test():
     cv2.imwrite("tgt.png", img_tgt)
 
 
+def bbh_fast_test():
+    """
+    Test the fast bbh algorithm
+    """
+    img_h = 1200
+    img_w = 1200
+    bboxes_ori = get_test_case()
+    alg = BBHFast(bboxes=bboxes_ori)
+    bboxes_hierarchy = alg.merge()
+    ori_vis = BBoxesVis(h=img_h,
+                        w=img_w,
+                        bboxes=bboxes_ori)
+    img_ori = ori_vis.render()
+    tgt_vis = BBoxesVis(h=img_h,
+                        w=img_w,
+                        bboxes=bboxes_hierarchy[1])
+    img_tgt = tgt_vis.render()
+    cv2.imwrite("ori.png", img_ori)
+    cv2.imwrite("tgt.png", img_tgt)
+
+
 def main():
-    bbh_naive_test()
+    # bbh_naive_test()
+    bbh_fast_test()
 
 
 if __name__ == "__main__":
