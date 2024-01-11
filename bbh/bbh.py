@@ -1,6 +1,10 @@
 import numpy as np
 import copy
 import cv2
+import pymorton as pm
+from sortedcontainers import SortedList
+from queue import PriorityQueue
+
 
 def uncovered_area_metric(bbox_s, bbox_t):
     x_tl, y_tl = min(bbox_s[0], bbox_t[0]), min(bbox_s[1], bbox_t[1])
@@ -93,10 +97,57 @@ class BBHNaive(BBH):
 
 
 class BBHFast(BBH):
-    def __init__(self):
-        pass
+    def __init__(self,
+                 bboxes,
+                 dist_metric=uncovered_area_metric,
+                 n_neighbors=4):
+        super().__init__(bboxes=bboxes, dist_metric=dist_metric)
+        self.n_neighbors = n_neighbors
 
     def merge(self):
+        self._morton_order()
+
+        hierarchy = []
+        invalid_pairs = {}
+        cur_idx = len(self.bboxes)  # Index for new merged bbox
+        pq = PriorityQueue()  # Use priority queue for quick candidate selection
+        for i in range(len(self.data)):
+            for j in range(i-self.n_neighbors, i+self.n_neighbors+1):
+                if 0 <= j < len(self.data) and j != i:
+                    dist = self.dist_metric(self.data[i][1], self.data[j][1])
+                    pq.put((dist, self.data[i], self.data[j]))
+
+        hierarchy.append(self.data.copy())
+        for i in range(1, len(self.bboxes)):
+            while True:
+                p = pq.get()
+                s_id, t_id = p[1][2], p[2][2]  # get the index of the bbox pair
+                if (s_id, t_id) not in invalid_pairs:
+                    break
+            cur_hierarchy = [d for d in hierarchy[i-1] if d[2] != s_id and d[2] != t_id]  # del the two to be merged
+            bbox_merged = self._merge2(p[1][1], p[2][1])  # merge two bbox
+            new_center_x, new_center_y = int((bbox_merged[0]+bbox_merged[2])/2), int((bbox_merged[1]+bbox_merged[3])/2)
+            z_merged = pm.interleave2(new_center_x, new_center_y)
+            d_merged = (z_merged, bbox_merged, cur_idx)
+            cur_idx += 1
+            cur_hierarchy.append(d_merged)
+            # Mark the neighbors of the two deleted box
+
+
+
+
+    def _morton_order(self):
+        """
+        Calculate the Morton-order or Z-order of the bboxes
+        """
+        self.bbox_centers = [[int((x_tl+x_br)/2), int((y_tl+y_br)/2)] for x_tl, y_tl, x_br, y_br in self.bboxes]
+        self.z_orders = [pm.interleave2(x, y) for x, y in self.bbox_centers]
+        # Use SortedList for Fast Insertion and Deletion
+
+        self.data = SortedList([(z_order, bbox, idx) for idx, bbox, z_order in enumerate(zip(self.bboxes, self.z_orders))])
+    #    self.data.sort(key=lambda elem: elem[0])  # sort by morton code
+
+    def _radix_sort(self):
         pass
 
 
