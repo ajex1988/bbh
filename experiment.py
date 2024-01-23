@@ -71,23 +71,60 @@ def task_running_time_exp():
                                   alg_name=alg_name)
 
 
-def accuracy_eva(bbox_list_gt, bbox_list_fast, bbox_list_bf, img_h, img_w):
+def evaluate_acc(bbox_list_gt, bbox_list_fast, bbox_list_bf, img_h, img_w):
     """
     Evaluate the accuracy of bbh_fast and bbh_naive
     """
     fast_vs_gt = cal_iou_bbox_list(bbox_list_src=bbox_list_fast,
                                    bbox_list_tgt=bbox_list_gt,
-                                   )
+                                   height=img_h,
+                                   width=img_w)
+    bf_vs_gt = cal_iou_bbox_list(bbox_list_src=bbox_list_bf,
+                                 bbox_list_tgt=bbox_list_gt,
+                                 height=img_h,
+                                 width=img_w)
+    fast_vs_bf = cal_iou_bbox_list(bbox_list_src=bbox_list_fast,
+                                   bbox_list_tgt=bbox_list_bf,
+                                   height=img_h,
+                                   width=img_w)
+    return fast_vs_gt, bf_vs_gt, fast_vs_bf
 
 
 def task_acc_eva():
     sample_file_path = sys.argv[1]
     out_path = sys.argv[2]
+    img_h = int(sys.argv[3])
+    img_w = int(sys.argv[4])
+    logging.basicConfig(filename=out_path, encoding='utf-8', level=logging.INFO)
+    logging.info(f"sample_file_path: {out_path}")
+    logging.info(f"img_h: {img_h}, img_w: {img_w}")
+
+    bbox_list = load_bbox_from_txt(txt_file_path=sample_file_path)
+    alg_fast = BBHFast(bboxes=bbox_list)
+    alg_bf = BBHNaive(bboxes=bbox_list)
+
+    h_fast = alg_fast.merge()
+    h_bf = alg_bf.merge()
+
+    n_levels = len(h_fast)
+
+    for i in range(n_levels):
+        bbox_list_fast = h_fast[i]
+        bbox_list_bf = h_bf[i]
+        fast_vs_gt, bf_vs_gt, fast_vs_bf = evaluate_acc(bbox_list_fast=bbox_list_fast,
+                                                        bbox_list_bf=bbox_list_bf,
+                                                        bbox_list_gt=bbox_list,
+                                                        img_h=img_h,
+                                                        img_w=img_w)
+        logging.info(f"Level: {i}, fast_vs_gt: {fast_vs_gt},"
+                     f"bf_vs_gt: {bf_vs_gt}, fast_vs_bf: {fast_vs_bf}")
 
 
 def main():
     #exp_homepage_case_test()
-    task_running_time_exp()
+    #task_running_time_exp()
+    task_acc_eva()
+
 
 if __name__ == "__main__":
     main()

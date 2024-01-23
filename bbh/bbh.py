@@ -93,6 +93,7 @@ class BBHNaive(BBH):
             bbox_list = [candidates[i] for i in range(nc) if i!=to_merge_idx_s and i!=to_merge_idx_t]
             bbox_list.append(bbox_merged)
             hierarchy[idx] = bbox_list
+        hierarchy.reverse()
         return hierarchy
 
 
