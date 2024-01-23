@@ -69,9 +69,10 @@ def task_running_time_exp():
                                   out_path=out_path,
                                   alg_name=alg_name)
 
-def main():
-    exp_homepage_case_test()
 
+def main():
+    #exp_homepage_case_test()
+    task_running_time_exp()
 
 if __name__ == "__main__":
     main()
