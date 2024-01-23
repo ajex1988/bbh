@@ -15,12 +15,12 @@ def cal_iou_bool(mask_src, mask_tgt):
     return iou
 
 
-def cal_iou_bbox_list(bbox_list_src, bbox_list_tgt, h_src, w_src, h_tgt, w_tgt):
+def cal_iou_bbox_list(bbox_list_src, bbox_list_tgt, height, width):
     """
     Calculate the IoU between 2 bounding box list
     """
-    mask_src = np.zeros((h_src, w_src), dtype=bool)
-    mask_tgt = np.zeros((h_tgt, w_tgt), dtype=bool)
+    mask_src = np.zeros((height, width), dtype=bool)
+    mask_tgt = np.zeros((height, width), dtype=bool)
 
     for bbox in bbox_list_src:
         x1, y1, x2, y2 = bbox[:]
@@ -38,17 +38,13 @@ def main():
     bbox_list_src = [[10, 10, 19, 19]]
     bbox_list_tgt = [[15, 10, 24, 19],
                      [40, 40, 54, 49]]
-    h_src = 120
-    w_src = 120
-    h_tgt = 120
-    w_tgt = 120
+    height = 120
+    width = 120
     iou_gt = 1/6
     iou = cal_iou_bbox_list(bbox_list_src=bbox_list_src,
                             bbox_list_tgt=bbox_list_tgt,
-                            h_src=h_src,
-                            w_src=w_src,
-                            h_tgt=h_tgt,
-                            w_tgt=w_tgt)
+                            height=height,
+                            width=width)
     print(f"Ground truth IoU: {iou_gt}")
     print(f"Calculated IoU: {iou}")
 

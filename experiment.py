@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from util.extract_bbox_from_real_cases import load_bbox_from_txt
+from util.evaluate_acc import cal_iou_bbox_list
 import logging
 from bbh.bbh import BBHNaive, BBHFast
 
@@ -68,6 +69,20 @@ def task_running_time_exp():
     running_time_test_by_rect_num(in_dir=in_dir,
                                   out_path=out_path,
                                   alg_name=alg_name)
+
+
+def accuracy_eva(bbox_list_gt, bbox_list_fast, bbox_list_bf, img_h, img_w):
+    """
+    Evaluate the accuracy of bbh_fast and bbh_naive
+    """
+    fast_vs_gt = cal_iou_bbox_list(bbox_list_src=bbox_list_fast,
+                                   bbox_list_tgt=bbox_list_gt,
+                                   )
+
+
+def task_acc_eva():
+    sample_file_path = sys.argv[1]
+    out_path = sys.argv[2]
 
 
 def main():
