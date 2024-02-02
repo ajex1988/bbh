@@ -5,7 +5,7 @@ from util.extract_bbox_from_real_cases import load_bbox_from_txt
 from util.evaluate_acc import cal_iou_bbox_list
 import logging
 from bbh.bbh import BBHNaive, BBHFast
-
+from util.visualization import visualize
 
 def exp_homepage_case_test():
     """
@@ -120,10 +120,80 @@ def task_acc_eva():
                      f"bf_vs_gt: {bf_vs_gt}, fast_vs_bf: {fast_vs_bf}")
 
 
+def task_vis_exp():
+    """
+    The experiment of visualizing the hierarchy
+    """
+    bbox_file_path = sys.argv[1]
+    out_dir = sys.argv[2]
+
+    gt_bbox_color = sys.argv[3]
+    fast_bbox_color = sys.argv[4]
+    bf_bbox_color = sys.argv[5]
+    bg_color = sys.argv[6]
+
+    img_h = int(sys.argv[7])
+    img_w = int(sys.argv[8])
+
+    gt_img_name = "vis_gt.png"
+    gt_img_path = os.path.join(out_dir, gt_img_name)
+
+    fast_out_dir = os.path.join(out_dir, "fast")
+    if not os.path.exists(fast_out_dir):
+        os.makedirs(fast_out_dir)
+
+    bf_out_dir = os.path.join(out_dir, "bf")
+    if not os.path.exists(bf_out_dir):
+        os.makedirs(bf_out_dir)
+
+    bbox_list = load_bbox_from_txt(bbox_file_path)
+    bbox_num = len(bbox_list)
+    alg_fast = BBHFast(bboxes=bbox_list)
+    alg_bf = BBHNaive(bboxes=bbox_list)
+
+    # save the original bbox
+    gt_vis_img = visualize(bbox_list=bbox_list,
+                           img_h=img_h,
+                           img_w=img_w,
+                           fg_color=gt_bbox_color,
+                           bg_color=bg_color
+                           )
+    gt_vis_img.save(gt_img_path)
+
+    h_fast = alg_fast.merge()
+    h_bf = alg_bf.merge()
+
+    for i in range(1, bbox_num):
+        bbox_list_fast = h_fast[i]
+        bbox_list_bf = h_bf[i]
+
+        fast_img_name = f"fast_{i}.png"
+        fast_img_path = os.path.join(fast_out_dir, fast_img_name)
+
+        bf_img_name = f"bf_{i}.png"
+        bf_img_path = os.path.join(bf_out_dir, bf_img_name)
+
+        fast_vis_img = visualize(bbox_list=bbox_list_fast,
+                                 img_h=img_h,
+                                 img_w=img_w,
+                                 fg_color=fast_bbox_color,
+                                 bg_color=bg_color)
+        fast_vis_img.save(fast_img_path)
+
+        bf_vis_img = visualize(bbox_list=bbox_list_bf,
+                               img_h=img_h,
+                               img_w=img_w,
+                               fg_color=bf_bbox_color,
+                               bg_color=bg_color)
+        bf_vis_img.save(bf_img_path)
+
+
+
 def main():
     #exp_homepage_case_test()
     #task_running_time_exp()
-    task_acc_eva()
+    #task_acc_eva()
+    task_vis_exp()
 
 
 if __name__ == "__main__":
