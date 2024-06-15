@@ -27,7 +27,7 @@ def parse_annotation(ann_file_path):
     for annotation in ann_list:
         image_id = annotation["image_id"]
         bbox = annotation["bbox"]  # coco use x, y, w, h
-        bbox = [bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]]  # change to x_min, y_min, x_max, y_max
+        bbox = [int(round(bbox[0])), int(round(bbox[1])), int(round(bbox[0]+bbox[2])), int(round(bbox[1]+bbox[3]))]  # change to x_min, y_min, x_max, y_max
         if image_id not in img_info:
             img_info[image_id] = {}
             img_info[image_id]["bbox_list"] = [bbox]
