@@ -42,6 +42,21 @@ def visualize(bbox_list, img_h, img_w, fg_color, bg_color):
     return image
 
 
+def visualize_realworld(bbox_list, image, img_h, img_w, fg_color, bg_color):
+    """
+    Visualize the bbox on an existing image
+    """
+    color_dict = get_color_dict()
+    if fg_color not in color_dict or bg_color not in color_dict:
+        raise Exception("Color not supported")
+    draw = ImageDraw.Draw(image)
+    for bbox in bbox_list:
+        draw_bbox_bdy(draw=draw,
+                      bbox=bbox,
+                      outline=color_dict[fg_color])
+    return image
+
+
 def main():
     """Do a test for visualization"""
     bbox_list = [[68, 82, 138, 321],
