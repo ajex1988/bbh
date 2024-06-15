@@ -10,18 +10,63 @@ from util.visualization import visualize
 import json
 
 
-def running_time_eva(ann_file_path, out_file_path):
+def running_time_eva(ann_file_path):
     """
     Evaluate the running time of all the samples in ann_file.
     """
     with open(ann_file_path, 'r') as f:
         img_info = json.load(f)
+    bf_perf = {}
+    fast_perf = {}
     for info in img_info:
-        bbox_list = img_info[info]['bbox']
+        bbox_list = img_info[info]['bbox_list']
+        alg_bf = BBHNaive(bboxes=bbox_list)
+        alg_fast = BBHFast(bboxes=bbox_list)
+
+        t_start = time.perf_counter()
+        _ = alg_bf.merge()
+        t_end = time.perf_counter()
+        bf_perf[info] = {"time": t_end - t_start,
+                         "count": len(img_info[info]['bbox_list'])}
+
+        t_start = time.perf_counter()
+        _ = alg_fast.merge()
+        t_end = time.perf_counter()
+        fast_perf[info] = {"time": t_end - t_start,
+                           "count": len(img_info[info]['bbox_list'])}
+    t_average = 0
+    cnt = 0
+    for info in bf_perf:
+        t_average += bf_perf[info]["time"]
+        cnt += bf_perf[info]["count"]
+    t_average = t_average / len(bf_perf)
+    cnt = cnt / len(bf_perf)
+    print("Brute Force Evaluation")
+    print(f"Average running time: {t_average}")
+    print(f"Average bbox: {cnt}")
+
+    t_average = 0
+    cnt = 0
+    for info in fast_perf:
+        t_average += fast_perf[info]["time"]
+        cnt += fast_perf[info]["count"]
+    t_average = t_average / len(fast_perf)
+    cnt = cnt / len(fast_perf)
+    print("Fast Evaluation")
+    print(f"Average running time: {t_average}")
+    print(f"Average bbox: {cnt}")
+
+
+def task_coco_running_time():
+    """
+    Evaluate the running time of selected samples from COCO dataset.
+    """
+    ann_file_path = "D:\\Data\\BBH_Exp\\COCO\\instances_trainval2017.json"
+    running_time_eva(ann_file_path)
 
 
 def main():
-    pass
+    task_coco_running_time()
 
 
 if __name__ == '__main__':
