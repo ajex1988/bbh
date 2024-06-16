@@ -8,6 +8,7 @@ COCO 2017 Val Stats:
 '''
 import os
 import json
+import shutil
 
 
 def parse_annotation(ann_file_path):
@@ -40,11 +41,17 @@ def parse_annotation(ann_file_path):
     return img_info
 
 
-def select_subset(img_info, threshold=50):
+def select_subset(img_info, in_dir, out_dir, threshold=50):
     img_info_sub = {}
     for info in img_info:
         if len(img_info[info]["bbox_list"]) >= threshold:
             img_info_sub[info] = img_info[info]
+            # Copy the image to the output dir
+            file_name = img_info[info]["file_name"]
+            file_path_src = os.path.join(in_dir, file_name)
+            file_path_dest = os.path.join(out_dir, file_name)
+            shutil.copyfile(file_path_src, file_path_dest)
+
     return img_info_sub
 
 
@@ -91,11 +98,21 @@ def task_coco_select_sub():
     """
     ann_file_path_train = "D:\\Data\\Segmentation\\COCO\\annotations_trainval2017\\annotations\\instances_train2017.json"
     ann_file_path_val = "D:\\Data\\Segmentation\\COCO\\annotations_trainval2017\\annotations\\instances_val2017.json"
+    in_dir_train = "D:\\Data\\Segmentation\\COCO\\train2017"
+    in_dir_val = "D:\\Data\\Segmentation\\COCO\\val2017"
+    out_dir = "D:\\Data\\Segmentation\\COCO"
     out_file = "D:\\Data\\BBH_Exp\\COCO\\instances_trainval2017.json"
     img_info_train = parse_annotation(ann_file_path_train)
+    img_info_train = select_subset(img_info=img_info_train,
+                                   in_dir=in_dir_train,
+                                   out_dir=out_dir,
+                                   threshold=50)
     img_info_val = parse_annotation(ann_file_path_val)
-    img_info = {**img_info_train, **img_info_val}
-    img_info_sub = select_subset(img_info)
+    img_info_val = select_subset(img_info=img_info_val,
+                                 in_dir=in_dir_val,
+                                 out_dir=out_dir,
+                                 threshold=50)
+    img_info_sub = {**img_info_train, **img_info_val}
     with open(out_file, "w") as f:
         json.dump(img_info_sub, f)
 

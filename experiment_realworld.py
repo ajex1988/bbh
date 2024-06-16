@@ -57,6 +57,10 @@ def running_time_eva(ann_file_path):
     print(f"Average bbox: {cnt}")
 
 
+def quality_eva(ann_file_path):
+    pass
+
+
 def task_coco_running_time():
     """
     Evaluate the running time of selected samples from COCO dataset.
@@ -64,6 +68,11 @@ def task_coco_running_time():
     ann_file_path = "D:\\Data\\BBH_Exp\\COCO\\instances_trainval2017.json"
     running_time_eva(ann_file_path)
 
+
+def task_coco_quality_eva():
+    ann_file_path = "D:\\Data\\BBH_Exp\\COCO\\instances_trainval2017.json"
+    img_dir = "D:\\Data\\BBH_Exp\\COCO\\images"
+    out_dir = "D:\\Data\\BBH_Exp\\COCO\\result"
 
 def main():
     task_coco_running_time()
