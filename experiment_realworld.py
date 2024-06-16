@@ -9,6 +9,8 @@ from util.visualization import visualize_realworld
 from PIL import Image
 import json
 import statistics
+from tqdm import tqdm
+
 
 def running_time_eva(ann_file_path):
     """
@@ -69,8 +71,8 @@ def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
     fast_vs_bf_list = {}
     with open(ann_file_path, 'r') as f:
         img_info = json.load(f)
-    for info in img_info:
-        img_name = img_info[info]['name']
+    for info in tqdm(img_info):
+        img_name = img_info[info]['file_name']
         img_path = os.path.join(img_dir, img_name)
         img = Image.open(img_path)
         img = img.convert('RGB')
@@ -98,31 +100,33 @@ def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
                                            bbox_list_tgt=bbox_list_bf,
                                            height=img_h,
                                            width=img_w)
-            if fast_vs_gt_list[i]:
+            if i in fast_vs_gt_list:
                 fast_vs_gt_list[i].append(fast_vs_gt)
             else:
                 fast_vs_gt_list[i] = [fast_vs_gt]
-            if bf_vs_gt_list:
-                bf_vs_gt_list.append(bf_vs_gt)
+
+            if i in bf_vs_gt_list:
+                bf_vs_gt_list[i].append(bf_vs_gt)
             else:
-                bf_vs_gt_list = [bf_vs_gt]
-            if fast_vs_bf_list:
-                fast_vs_bf_list.append(fast_vs_bf)
+                bf_vs_gt_list[i] = [bf_vs_gt]
+
+            if i in fast_vs_bf_list:
+                fast_vs_bf_list[i].append(fast_vs_bf)
             else:
-                fast_vs_bf_list = [fast_vs_bf]
+                fast_vs_bf_list[i] = [fast_vs_bf]
 
             img_vis_gt = visualize_realworld(bbox_list=bbox_list_gt,
-                                             image=img,
+                                             image=img.copy(),
                                              bbox_color="BLUE")
             img_vis_gt.save(os.path.join(vis_dir, f"{img_name[:-4]}_gt_{i}.png"))
 
             img_vis_fast = visualize_realworld(bbox_list=bbox_list_fast,
-                                               image=img,
+                                               image=img.copy(),
                                                bbox_color="CYAN")
             img_vis_fast.save(os.path.join(vis_dir, f"{img_name[:-4]}_fast_{i}.png"))
 
             img_vis_bf = visualize_realworld(bbox_list=bbox_list_bf,
-                                             image=img,
+                                             image=img.copy(),
                                              bbox_color="MAGENTA")
             img_vis_bf.save(os.path.join(vis_dir, f"{img_name[:-4]}_bf_{i}.png"))
 
@@ -153,7 +157,8 @@ def task_coco_quality_eva():
                 out_dir=out_dir)
 
 def main():
-    task_coco_running_time()
+    #task_coco_running_time()
+    task_coco_quality_eva()
 
 
 if __name__ == '__main__':

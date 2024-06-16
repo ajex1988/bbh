@@ -100,7 +100,7 @@ def task_coco_select_sub():
     ann_file_path_val = "D:\\Data\\Segmentation\\COCO\\annotations_trainval2017\\annotations\\instances_val2017.json"
     in_dir_train = "D:\\Data\\Segmentation\\COCO\\train2017"
     in_dir_val = "D:\\Data\\Segmentation\\COCO\\val2017"
-    out_dir = "D:\\Data\\Segmentation\\COCO"
+    out_dir = "D:\\Data\\BBH_Exp\\COCO\\images"
     out_file = "D:\\Data\\BBH_Exp\\COCO\\instances_trainval2017.json"
     img_info_train = parse_annotation(ann_file_path_train)
     img_info_train = select_subset(img_info=img_info_train,
