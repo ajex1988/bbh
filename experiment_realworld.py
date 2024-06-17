@@ -73,6 +73,7 @@ def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
         img_info = json.load(f)
     for info in tqdm(img_info):
         img_name = img_info[info]['file_name']
+        print(f"{img_name}")
         img_path = os.path.join(img_dir, img_name)
         img = Image.open(img_path)
         img = img.convert('RGB')
@@ -143,6 +144,12 @@ def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
 def task_coco_running_time():
     """
     Evaluate the running time of selected samples from COCO dataset.
+        Brute Force Evaluation
+        Average running time: 0.043984600000000006
+        Average bbox: 56.13178294573643
+        Fast Evaluation
+        Average running time: 0.007240408527131785
+        Average bbox: 56.13178294573643
     """
     ann_file_path = "D:\\Data\\BBH_Exp\\COCO\\instances_trainval2017.json"
     running_time_eva(ann_file_path)
@@ -156,9 +163,33 @@ def task_coco_quality_eva():
                 img_dir=img_dir,
                 out_dir=out_dir)
 
+
+def task_city_person_time():
+    """
+    Brute Force Evaluation
+    Average running time: 0.07180097631578947
+    Average bbox: 63.28947368421053
+    Fast Evaluation
+    Average running time: 0.009794628947368413
+    Average bbox: 63.28947368421053
+    """
+    ann_file_path = "D:\\Data\\BBH_Exp\\CityPersons\\city_persons\\city_person.json"
+    running_time_eva(ann_file_path=ann_file_path)
+
+
+def task_city_person_quality_eva():
+    ann_file_path = "D:\\Data\\BBH_Exp\\CityPersons\\city_persons\\city_person.json"
+    img_dir = "D:\\Data\\BBH_Exp\\CityPersons\\city_persons\\images"
+    out_dir = "D:\\Data\\BBH_Exp\\CityPersons\\city_persons\\result"
+    quality_eva(ann_file_path=ann_file_path,
+                img_dir=img_dir,
+                out_dir=out_dir)
+
 def main():
     #task_coco_running_time()
-    task_coco_quality_eva()
+    #task_coco_quality_eva()
+    #task_city_person_time()
+    task_city_person_quality_eva()
 
 
 if __name__ == '__main__':

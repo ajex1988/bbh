@@ -31,7 +31,7 @@ def parse_annotation(ann_dir, img_dir, out_dir, threshold=50):
                     bbox = obj_info['bbox']
                     bbox_list.append((bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]))
                 # Copy the image
-                img_id = ann_file_name[:-24]
+                img_id = ann_file_name[:-23]
                 img_name = f"{img_id}_leftImg8bit.png"
                 img_file_path = os.path.join(img_dir, city_name, img_name)
                 img_file_path_dest = os.path.join(out_dir, "images", f"{city_name}_{img_name}")
@@ -57,7 +57,7 @@ def task_parse_cityperson():
 
 
 def main():
-    pass
+    task_parse_cityperson()
 
 
 if __name__ == "__main__":
