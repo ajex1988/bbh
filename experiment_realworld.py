@@ -59,7 +59,7 @@ def running_time_eva(ann_file_path):
     print(f"Average bbox: {cnt}")
 
 
-def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
+def quality_eva(ann_file_path, img_dir, out_dir):
     vis_dir = os.path.join(out_dir, "vis")
     if not os.path.exists(vis_dir):
         os.makedirs(vis_dir)
@@ -86,6 +86,7 @@ def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
         bbh_fast = alg_fast.merge()
         bbh_bf = alg_bf.merge()
 
+        h_levels = len(bbh_bf)
         for i in range(h_levels):
             bbox_list_fast = bbh_fast[i]
             bbox_list_bf = bbh_bf[i]
@@ -141,6 +142,91 @@ def quality_eva(ann_file_path, img_dir, out_dir, h_levels=50):
         json.dump(eva_info, f)
 
 
+def quality_eva_select(ann_file_path, img_dir, out_dir, select_list=[-20, -10, -5]):
+    vis_dir = os.path.join(out_dir, "vis")
+    if not os.path.exists(vis_dir):
+        os.makedirs(vis_dir)
+    eva_info = {"fast_vs_gt":[],
+                "bf_vs_gt":[],
+                "fast_vs_bf":[]}
+    fast_vs_gt_list = {}
+    bf_vs_gt_list = {}
+    fast_vs_bf_list = {}
+    with open(ann_file_path, 'r') as f:
+        img_info = json.load(f)
+    for info in tqdm(img_info):
+        img_name = img_info[info]['file_name']
+        print(f"{img_name}")
+        img_path = os.path.join(img_dir, img_name)
+        img = Image.open(img_path)
+        img = img.convert('RGB')
+        bbox_list = img_info[info]['bbox_list']
+        bbox_list_gt = bbox_list
+        img_h = img_info[info]['height']
+        img_w = img_info[info]['width']
+        alg_bf = BBHNaive(bboxes=bbox_list)
+        alg_fast = BBHFast(bboxes=bbox_list)
+        bbh_fast = alg_fast.merge()
+        bbh_bf = alg_bf.merge()
+
+        h_levels = len(bbh_bf)
+        for i in range(h_levels):
+            bbox_list_fast = bbh_fast[i]
+            bbox_list_bf = bbh_bf[i]
+            fast_vs_gt = cal_iou_bbox_list(bbox_list_src=bbox_list_fast,
+                                           bbox_list_tgt=bbox_list_gt,
+                                           height=img_h,
+                                           width=img_w)
+            bf_vs_gt = cal_iou_bbox_list(bbox_list_src=bbox_list_bf,
+                                         bbox_list_tgt=bbox_list_gt,
+                                         height=img_h,
+                                         width=img_w)
+            fast_vs_bf = cal_iou_bbox_list(bbox_list_src=bbox_list_fast,
+                                           bbox_list_tgt=bbox_list_bf,
+                                           height=img_h,
+                                           width=img_w)
+            if i in fast_vs_gt_list:
+                fast_vs_gt_list[i].append(fast_vs_gt)
+            else:
+                fast_vs_gt_list[i] = [fast_vs_gt]
+
+            if i in bf_vs_gt_list:
+                bf_vs_gt_list[i].append(bf_vs_gt)
+            else:
+                bf_vs_gt_list[i] = [bf_vs_gt]
+
+            if i in fast_vs_bf_list:
+                fast_vs_bf_list[i].append(fast_vs_bf)
+            else:
+                fast_vs_bf_list[i] = [fast_vs_bf]
+
+            if i-h_levels in select_list:
+                # Only select some images to save storage and time
+                img_vis_gt = visualize_realworld(bbox_list=bbox_list_gt,
+                                             image=img.copy(),
+                                             bbox_color="BLUE")
+                img_vis_gt.save(os.path.join(vis_dir, f"{img_name[:-4]}_gt_{i}.png"))
+
+                img_vis_fast = visualize_realworld(bbox_list=bbox_list_fast,
+                                               image=img.copy(),
+                                               bbox_color="CYAN")
+                img_vis_fast.save(os.path.join(vis_dir, f"{img_name[:-4]}_fast_{i}.png"))
+
+                img_vis_bf = visualize_realworld(bbox_list=bbox_list_bf,
+                                             image=img.copy(),
+                                             bbox_color="MAGENTA")
+                img_vis_bf.save(os.path.join(vis_dir, f"{img_name[:-4]}_bf_{i}.png"))
+
+    for i in range(h_levels):
+        eva_info["fast_vs_gt"].append(statistics.mean(fast_vs_gt_list[i]))
+        eva_info["bf_vs_gt"].append(statistics.mean(bf_vs_gt_list[i]))
+        eva_info["fast_vs_bf"].append(statistics.mean(fast_vs_bf_list[i]))
+    print("Quality Evaluation")
+    print(eva_info)
+    with open(os.path.join(out_dir, "eva_info.json"), 'w') as f:
+        json.dump(eva_info, f)
+
+
 def task_coco_running_time():
     """
     Evaluate the running time of selected samples from COCO dataset.
@@ -185,11 +271,45 @@ def task_city_person_quality_eva():
                 img_dir=img_dir,
                 out_dir=out_dir)
 
+
+def task_textorc_running_time():
+    """
+    Brute Force Evaluation
+    Average running time: 6.203046922773209
+    Average bbox: 144.46633606713715
+    Fast Evaluation
+    Average running time: 0.023671001277880847
+    Average bbox: 144.46633606713715
+    """
+    ann_file_path = r"D:\Data\BBH_Exp\TextOCR\textocr.json"
+    running_time_eva(ann_file_path=ann_file_path)
+
+
+def task_textocr_quality_eva():
+    ann_file_path = r"D:\Data\BBH_Exp\TextOCR_500\textocr.json"
+    img_dir = r"D:\Data\BBH_Exp\TextOCR_500\images"
+    out_dir = r"D:\Data\BBH_Exp\TextOCR_500\result"
+    quality_eva(ann_file_path=ann_file_path,
+                img_dir=img_dir,
+                out_dir=out_dir)
+
+def task_textocr_quality_eva_select():
+    ann_file_path = r"D:\Data\BBH_Exp\TextOCR_500_select\textocr.json"
+    img_dir = r"D:\Data\BBH_Exp\TextOCR_500_select\images"
+    out_dir = r"D:\Data\BBH_Exp\TextOCR_500_select\result"
+    quality_eva_select(ann_file_path=ann_file_path,
+                       img_dir=img_dir,
+                       out_dir=out_dir)
+
+
 def main():
     #task_coco_running_time()
     #task_coco_quality_eva()
     #task_city_person_time()
-    task_city_person_quality_eva()
+    #task_city_person_quality_eva()
+    #task_textorc_running_time()
+    #task_textocr_quality_eva()
+    task_textocr_quality_eva_select()
 
 
 if __name__ == '__main__':
