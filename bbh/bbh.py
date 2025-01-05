@@ -15,6 +15,12 @@ def uncovered_area_metric(bbox_s, bbox_t):
     return area_st - area_s - area_t
 
 
+def uncovered_area_metric_with_labels(bbox_s, bbox_t, label_s=0, label_t=0, penalty=1e5):
+    if label_s == label_t:
+        return uncovered_area_metric(bbox_s=bbox_s, bbox_t=bbox_t)
+    else:
+        return penalty + uncovered_area_metric(bbox_s=bbox_s, bbox_t=bbox_t)
+
 class BBoxesVis:
     '''
     Bounding Box Visualization
@@ -179,6 +185,106 @@ class BBHFast(BBH):
     def _radix_sort(self):
         pass
 
+
+class BBHFastMultiLabel():
+    """
+    Fast Bounding Box hierarchy Algorithm for multi-label inputs.
+    For BBHFast and other BBH defined above, the input format is a list of list representing the bbox:
+    [[x1, y1, x1_, y1_], [x2, y2, x2_, y2_], [x3, y3, x3_, y3_] ..., [xn, yn, xn_, yn_]]
+    Here the input format is:
+    {label1:[[bbox1], [bbox2], ..., [bbox_n]],
+    label2:[[bbox1], [bbox2], ..., [bbox_n]],
+    ...
+    label_n:[[bbox1], [bbox2], ..., [bbox_n]]}
+    """
+    def __init__(self,
+                 bboxes,
+                 labels,
+                 dist_metric=uncovered_area_metric_with_labels,
+                 n_neighbors=4):
+        self.bboxes = bboxes
+        self.labels = labels
+        self.dist_metric = dist_metric
+        self.n_neighbors = n_neighbors
+
+    def merge(self):
+        self._morton_order()
+
+        hierarchy = []
+        is_merged = set()
+        cur_idx = len(self.bboxes)  # Index for new merged bbox
+        pq = PriorityQueue()  # Use priority queue for quick candidate selection
+        for i in range(len(self.data)):
+            for j in range(i - self.n_neighbors, i + self.n_neighbors + 1):
+                if 0 <= j < len(self.data) and j != i:
+                    dist = self.dist_metric(self.data[i][1], self.data[j][1], self.data[i][3], self.data[j][3])
+                    pq.put((dist, self.data[i], self.data[j]))
+
+        hierarchy.append(self.data.copy())  # original bboxes
+        for i in range(0, self.n_bboxes - 1):
+            while True:
+                p = pq.get()
+                s_idx, t_idx = p[1][2], p[2][2]  # get the index of the bbox pair
+                if s_idx not in is_merged and t_idx not in is_merged:
+                    break
+            # Merge the selected two bboxes to get a new one
+            bbox_merged, label_merged = self._merge2withlabels(p[1][1], p[2][1], p[1][3], p[2][3])  # merge two bbox
+            new_center_x, new_center_y = int((bbox_merged[0] + bbox_merged[2]) / 2), int(
+                (bbox_merged[1] + bbox_merged[3]) / 2)
+            z_merged = pm.interleave2(new_center_x, new_center_y)
+            d_merged = (z_merged, bbox_merged, cur_idx, label_merged)
+            self.idx2bbox_tuple[cur_idx] = d_merged
+            cur_idx += 1  # index for next bbox
+
+            # Mark the selected two boxes as merged
+            is_merged.add(s_idx)
+            is_merged.add(t_idx)
+
+            # Remove the merged bboxes from the current sorted list
+            cur_data = hierarchy[i].copy()  # Copy from previous level first. This is not necessary so does not count
+            cur_data.remove(self.idx2bbox_tuple[s_idx])
+            cur_data.remove(self.idx2bbox_tuple[t_idx])
+            # Add the merged bbox to the sorted list
+            cur_data.add(d_merged)  # BST insert, O(logN)
+            # Search neighbors and calculate the distance
+            m_idx = cur_data.index(d_merged)  # Get the index of the added element in the sorted list. Log(N)
+            for j in range(m_idx - self.n_neighbors, m_idx + self.n_neighbors + 1):
+                if 0 <= j < len(cur_data) and j != m_idx:
+                    dist = self.dist_metric(cur_data[m_idx][1], cur_data[j][1], cur_data[m_idx][3], cur_data[j][3])
+                    pq.put((dist, cur_data[m_idx], cur_data[j]))
+
+            hierarchy.append(cur_data)
+        # Post-processing. Convert OrderedList to List
+        hl = []
+        hierarchy_labels = []
+        for h in hierarchy:
+            l = []
+            hlabel = []
+            for t in h:
+                l.append(t[1])
+                hlabel.append(t[3])
+            hl.append(l)
+            hierarchy_labels.append(hlabel)
+        return hl, hierarchy_labels
+
+    def _merge2withlabels(self, bbox_s, bbox_t,
+                          label_s, label_t):
+        x_tl, y_tl = min(bbox_s[0], bbox_t[0]), min(bbox_s[1], bbox_t[1])
+        x_br, y_br = max(bbox_s[2], bbox_t[2]), max(bbox_s[3], bbox_t[3])
+        return [x_tl, y_tl, x_br, y_br], max(label_s, label_t)
+
+    def _morton_order(self):
+        """
+        Calculate the Morton-order or Z-order of the bboxes
+        """
+        self.bbox_centers = [[int((x_tl+x_br)/2), int((y_tl+y_br)/2)] for x_tl, y_tl, x_br, y_br in self.bboxes]
+        self.z_orders = [pm.interleave2(x, y) for x, y in self.bbox_centers]
+        # Use SortedList for Fast Insertion and Deletion
+
+        self.data = SortedList()
+        for idx, (bbox, z_order, label) in enumerate(zip(self.bboxes, self.z_orders, self.labels)):
+            self.data.add((z_order, bbox, idx, label))
+            self.idx2bbox_tuple[idx] = (z_order, bbox, idx, label)
 
 def get_test_case():
     bboxes = [[68, 82, 138, 321],
