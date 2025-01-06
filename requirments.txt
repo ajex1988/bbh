@@ -2,3 +2,5 @@ numpy
 pillow
 opencv-python
 tqdm
+pymorton
+sortedcontainers

@@ -37,8 +37,8 @@ def task_visualize_cityperson_multilabel():
         info = json.load(f)
 
     for fid in info:
-        city_name, no_1, no_2, gtbox_name = info[fid]
-        img_name = f"{city_name}_{city_name}_{no_1}_{no_2}.png"
+        city_name, no_1, no_2, gtbox_name = fid.split('_')
+        img_name = f"{city_name}_{city_name}_{no_1}_{no_2}_leftImg8bit.png"
         img_path = os.path.join(img_dir, img_name)
         img = Image.open(img_path)
         img = img.convert('RGB')
@@ -50,7 +50,7 @@ def task_visualize_cityperson_multilabel():
         for lname in labeled_bboxes:
             bbox = labeled_bboxes[lname]
             bboxes.extend(bbox)
-            labels.append([name2label[lname]]*len(bbox))
+            labels.extend([name2label[lname]]*len(bbox))
 
         alg = BBHFastMultiLabel(bboxes=bboxes, labels=labels)
         bbh, bbh_label = alg.merge()

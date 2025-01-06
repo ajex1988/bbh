@@ -207,6 +207,9 @@ class BBHFastMultiLabel():
         self.dist_metric = dist_metric
         self.n_neighbors = n_neighbors
 
+        self.n_bboxes = len(bboxes)
+        self.idx2bbox_tuple = {}
+
     def merge(self):
         self._morton_order()
 

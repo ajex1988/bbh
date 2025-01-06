@@ -39,9 +39,12 @@ def parse_cityperson_annotation(ann_dir, total_obj_num_thre=50):
                 for obj in objects:
                     label = obj['label']
                     if label not in sample_info:
-                        sample_info[label] = [obj["bbox"]]
+                        # Convert to [x1, y1, x2, y2] from [x,y,w,h]
+                        sample_info[label] = [[obj["bbox"][0], obj["bbox"][1],
+                                              obj["bbox"][2]+obj["bbox"][0], obj["bbox"][3]+obj["bbox"][1]]]
                     else:
-                        sample_info[label].append(obj["bbox"])
+                        sample_info[label].append([obj["bbox"][0], obj["bbox"][1],
+                                              obj["bbox"][2]+obj["bbox"][0], obj["bbox"][3]+obj["bbox"][1]])
                 file_id = os.path.splitext(ann_file_name)[0]
                 info[file_id] = sample_info
 
@@ -80,14 +83,14 @@ def task_filter4multilabels():
     in_json_file_path = r"D:\Data\BBH_Exp\CityPersons\multi_labels\annotation.json"
     out_json_file_path = r"D:\Data\BBH_Exp\CityPersons\multi_labels\annotation_filtered.json"
     num_classes = 2
-    second_thre = 10
+    second_thre = 5
     filtered_info = filter_samples(in_json_file_path, num_classes=num_classes, second_thre=second_thre)
     with open(out_json_file_path, 'w') as writer:
         json.dump(filtered_info, writer)
 
 
 def main():
-    #task_parse_all_and_save_as_one()
+    task_parse_all_and_save_as_one()
     task_filter4multilabels()
 
 
