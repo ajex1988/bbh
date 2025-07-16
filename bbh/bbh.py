@@ -289,6 +289,115 @@ class BBHFastMultiLabel():
             self.data.add((z_order, bbox, idx, label))
             self.idx2bbox_tuple[idx] = (z_order, bbox, idx, label)
 
+class BBHFastNonOverlap(BBHFast):
+    """
+    Fast Bounding Box Hierarchy Algorithm with Non-overlapping Constraint
+    """
+    def __init__(self,
+                 bboxes,
+                 dist_metric,
+                 n_neighbors=4,
+                 check_overlap_neighbors=5):
+        self.bboxes = bboxes
+        self.dist_metric = dist_metric
+        self.n_neighbors = n_neighbors
+        self.check_overlap_neighbors = check_overlap_neighbors
+
+        self.n_bboxes = len(bboxes)
+        self.idx2bbox_tuple = {}
+
+    def merge(self):
+        self._morton_order()
+
+        hierarchy = []
+        is_merged = set()
+        cur_idx = len(self.bboxes)  # Index for new merged bbox
+        pq = PriorityQueue()  # Use priority queue for quick candidate selection
+        for i in range(len(self.data)):
+            for j in range(i-self.n_neighbors, i+self.n_neighbors+1):
+                if 0 <= j < len(self.data) and j != i:
+                    dist = self.dist_metric(self.data[i][1], self.data[j][1])
+                    pq.put((dist, self.data[i], self.data[j]))
+
+        hierarchy.append(self.data.copy())  # original bboxes
+        for i in range(0, self.n_bboxes-1):
+            while True:
+                # Instead of popping the first element, just access it and check if merged, the merged one has overlap
+                # with other rects
+                p = pq.get()
+                s_idx, t_idx = p[1][2], p[2][2]  # get the index of the bbox pair
+                if s_idx not in is_merged and t_idx not in is_merged:
+                    is_valid_merge = True
+                    # check if merge these two, it will have overlaps
+                    bbox_merged = self._merge2(p[1][1], p[2][1])
+                    # check if the merged one has overlap with the 1st bbox
+                    bbox_s = self.idx2bbox_tuple[s_idx]
+                    s_index = hierarchy[i].index(bbox_s)
+                    for j in range(s_index-self.check_overlap_neighbors, s_index+self.check_overlap_neighbors+1):
+                        if 0<=j<len(hierarchy[i]) and j != s_index:
+                            if self._overlap(bbox_merged, hierarchy[i][j]):
+                                is_valid_merge = False
+                                break
+                    # check if the merged one has overlap with the 2nd bbox
+                    bbox_t = self.idx2bbox_tuple[t_idx]
+                    t_index = hierarchy[i].index(bbox_t)
+                    for j in range(t_index-self.check_overlap_neighbors, t_index+self.check_overlap_neighbors+1):
+                        if 0<=j<len(hierarchy[i]) and j != t_index:
+                            if self._overlap(bbox_t, hierarchy[i][j]):
+                                is_valid_merge = False
+                                break
+                    # if everything is OK then get out of the while loop
+                    if is_valid_merge:
+                        break
+            # Merge the selected two bboxes to get a new one
+            bbox_merged = self._merge2(p[1][1], p[2][1])  # merge two bbox
+            new_center_x, new_center_y = int((bbox_merged[0] + bbox_merged[2]) / 2), int(
+                (bbox_merged[1] + bbox_merged[3]) / 2)
+            z_merged = pm.interleave2(new_center_x, new_center_y)
+            d_merged = (z_merged, bbox_merged, cur_idx)
+            self.idx2bbox_tuple[cur_idx] = d_merged
+            cur_idx += 1  # index for next bbox
+
+            # Mark the selected two boxes as merged
+            is_merged.add(s_idx)
+            is_merged.add(t_idx)
+
+            # Remove the merged bboxes from the current sorted list
+            cur_data = hierarchy[i].copy()  # Copy from previous level first. This is not necessary so does not count
+            cur_data.remove(self.idx2bbox_tuple[s_idx])
+            cur_data.remove(self.idx2bbox_tuple[t_idx])
+            # Add the merged bbox to the sorted list
+            cur_data.add(d_merged)  # BST insert, O(logN)
+            # Search neighbors and calculate the distance
+            m_idx = cur_data.index(d_merged)  # Get the index of the added element in the sorted list. Log(N)
+            for j in range(m_idx-self.n_neighbors, m_idx+self.n_neighbors+1):
+                if 0 <= j < len(cur_data) and j != m_idx:
+                    dist = self.dist_metric(cur_data[m_idx][1], cur_data[j][1])
+                    pq.put((dist, cur_data[m_idx], cur_data[j]))
+
+            hierarchy.append(cur_data)
+        # Post-processing. Convert OrderedList to List
+        hl = []
+        for h in hierarchy:
+            l = []
+            for t in h:
+                l.append(t[1])
+            hl.append(l)
+        return hl
+
+    def _overlap(self, bbox_s, bbox_t):
+        # Check if two bboxs overlap
+        xmin = max(bbox_s[0], bbox_t[0])
+        ymin = max(bbox_s[1], bbox_t[1])
+        xmax = min(bbox_s[2], bbox_t[2])
+        ymax = min(bbox_s[3], bbox_t[3])
+
+        if xmax > xmin and ymax > ymin:
+            return True
+        else:
+            return False
+
+
 def get_test_case():
     bboxes = [[68, 82, 138, 321],
               [202, 81, 252, 327],
