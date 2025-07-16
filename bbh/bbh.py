@@ -295,7 +295,7 @@ class BBHFastNonOverlap(BBHFast):
     """
     def __init__(self,
                  bboxes,
-                 dist_metric,
+                 dist_metric=uncovered_area_metric,
                  n_neighbors=4,
                  check_overlap_neighbors=5):
         self.bboxes = bboxes
@@ -327,23 +327,24 @@ class BBHFastNonOverlap(BBHFast):
                 p = pq.get()
                 s_idx, t_idx = p[1][2], p[2][2]  # get the index of the bbox pair
                 if s_idx not in is_merged and t_idx not in is_merged:
+                    bbox_s = self.idx2bbox_tuple[s_idx]
+                    s_index = hierarchy[i].index(bbox_s)
+                    bbox_t = self.idx2bbox_tuple[t_idx]
+                    t_index = hierarchy[i].index(bbox_t)
+
                     is_valid_merge = True
                     # check if merge these two, it will have overlaps
                     bbox_merged = self._merge2(p[1][1], p[2][1])
                     # check if the merged one has overlap with the 1st bbox
-                    bbox_s = self.idx2bbox_tuple[s_idx]
-                    s_index = hierarchy[i].index(bbox_s)
                     for j in range(s_index-self.check_overlap_neighbors, s_index+self.check_overlap_neighbors+1):
-                        if 0<=j<len(hierarchy[i]) and j != s_index:
-                            if self._overlap(bbox_merged, hierarchy[i][j]):
+                        if 0<=j<len(hierarchy[i]) and j != s_index and j != t_index:
+                            if self._overlap(bbox_merged, hierarchy[i][j][1]):
                                 is_valid_merge = False
                                 break
                     # check if the merged one has overlap with the 2nd bbox
-                    bbox_t = self.idx2bbox_tuple[t_idx]
-                    t_index = hierarchy[i].index(bbox_t)
                     for j in range(t_index-self.check_overlap_neighbors, t_index+self.check_overlap_neighbors+1):
-                        if 0<=j<len(hierarchy[i]) and j != t_index:
-                            if self._overlap(bbox_t, hierarchy[i][j]):
+                        if 0<=j<len(hierarchy[i]) and j != t_index and j != s_index:
+                            if self._overlap(bbox_merged, hierarchy[i][j][1]):
                                 is_valid_merge = False
                                 break
                     # if everything is OK then get out of the while loop
@@ -458,9 +459,31 @@ def bbh_fast_test():
     cv2.imwrite("tgt.png", img_tgt)
 
 
+def bbh_non_overlap_test():
+    """
+    Test the non-overlap bbh algorithm
+    """
+    print("bbh_non_overlap_test")
+    img_h = 1200
+    img_w = 1200
+    bboxes_ori = get_test_case()
+    alg = BBHFastNonOverlap(bboxes=bboxes_ori)
+    bboxes_hierarchy = alg.merge()
+    ori_vis = BBoxesVis(h=img_h,
+                        w=img_w,
+                        bboxes=bboxes_ori)
+    img_ori = ori_vis.render()
+    tgt_vis = BBoxesVis(h=img_h,
+                        w=img_w,
+                        bboxes=bboxes_hierarchy[8])
+    img_tgt = tgt_vis.render()
+    cv2.imwrite("ori.png", img_ori)
+    cv2.imwrite("tgt_non_overlap.png", img_tgt)
+
 def main():
     # bbh_naive_test()
-    bbh_fast_test()
+    # bbh_fast_test()
+    bbh_non_overlap_test()
 
 
 if __name__ == "__main__":
