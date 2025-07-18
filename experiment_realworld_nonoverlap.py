@@ -2,7 +2,7 @@ import os
 import json
 from PIL import Image, ImageDraw
 from bbh.bbh import BBHFastNonOverlap, BBHFast
-
+from util.bbox_preprocess import remove_overlap_bboxes
 
 def task_vis_on_city_person():
     ann_file_path = r"D:\Data\BBH_Exp\CityPersons\multi_labels\annotation_filtered.json"
@@ -31,6 +31,10 @@ def task_vis_on_city_person():
         for lname in labeled_bboxes:
             bbox = labeled_bboxes[lname]
             bboxes.extend(bbox)
+        # pre-process the input so that input has no overlapping bboxes
+        print(f'Initially there are {len(bboxes)} bboxes')
+        bboxes = remove_overlap_bboxes(bboxes)
+        print(f'After removing overlapping there are {len(bboxes)} bboxes')
 
         alg_fast = BBHFast(bboxes=bboxes)
         alg_nonoverlap = BBHFastNonOverlap(bboxes=bboxes)
