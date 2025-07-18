@@ -351,9 +351,6 @@ class BBHFastNonOverlap(BBHFast):
                     if is_valid_merge:
                         break
             # Merge the selected two bboxes to get a new one
-            print(f"Iter {i}")
-            if i == 16:
-                print("Here")
             bbox_merged = self._merge2(p[1][1], p[2][1])  # merge two bbox
             new_center_x, new_center_y = int((bbox_merged[0] + bbox_merged[2]) / 2), int(
                 (bbox_merged[1] + bbox_merged[3]) / 2)
