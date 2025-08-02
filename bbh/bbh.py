@@ -15,7 +15,7 @@ def uncovered_area_metric(bbox_s, bbox_t):
     return area_st - area_s - area_t
 
 
-def uncovered_area_metric_with_labels(bbox_s, bbox_t, label_s=0, label_t=0, penalty=1e5):
+def uncovered_area_metric_with_labels(bbox_s, bbox_t, label_s=0, label_t=0, penalty=1e10):
     if label_s == label_t:
         return uncovered_area_metric(bbox_s=bbox_s, bbox_t=bbox_t)
     else:
